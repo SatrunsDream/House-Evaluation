@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Typography, ThemeProvider, createTheme, CssBaseline, TextField, Box, Paper, InputAdornment, Button, Rating } from '@mui/material';
 import LocationMap from './components/LocationMap';
+import config from './config';
 
 const theme = createTheme({
   palette: {
@@ -131,7 +132,7 @@ function App() {
       };
 
       // Call the prediction API
-      const response = await fetch('http://localhost:8000/api/predict-house-value', {
+      const response = await fetch(`${config.backendUrl}/api/predict-house-value`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +152,10 @@ function App() {
       setLoading(false);
     }
   };
+
+  console.log('Google Maps API Key:', config.googleMapsApiKey);
+  console.log('Backend URL:', config.backendUrl);
+  console.log('API Key:', config.apiKey);
 
   return (
     <ThemeProvider theme={theme}>
@@ -390,4 +395,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
