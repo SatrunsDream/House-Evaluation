@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3 -m ensurepip && python3 -m pip install --upgrade pip
 
 # Copy the rest of the application
 COPY . .
