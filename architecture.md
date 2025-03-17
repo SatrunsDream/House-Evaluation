@@ -12,6 +12,8 @@ frontend/
 │   ├── components/
 │   │   ├── LocationMap.jsx       # Handles map display and nearby places
 │   ├── App.js                    # Main application component
+│   ├── api.js                    # API calls
+│   ├── config.js                 # Configuration file for environment variables
 │   └── index.js                  # Application entry point
 ```
 

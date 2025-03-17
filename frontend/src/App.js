@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Container, Typography, ThemeProvider, createTheme, CssBaseline, TextField, Box, Paper, InputAdornment, Button, Rating } from '@mui/material';
 import LocationMap from './components/LocationMap';
 import config from './config';
+import { fetchPrediction } from './api';
 
 const theme = createTheme({
   palette: {
@@ -132,19 +133,7 @@ function App() {
       };
 
       // Call the prediction API
-      const response = await fetch(`${config.backendUrl}/api/predict-house-value`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(predictionData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get prediction');
-      }
-
-      const data = await response.json();
+      const data = await fetchPrediction(predictionData);
       setPredictionResult(data.prediction);
     } catch (error) {
       console.error('Error:', error);

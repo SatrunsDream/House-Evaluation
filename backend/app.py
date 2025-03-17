@@ -1,4 +1,3 @@
-# filepath: c:\Users\sardo\OneDrive\Desktop\Classes\dsc148\House-Evaluation\backend\app.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -7,6 +6,11 @@ import os
 from dotenv import load_dotenv
 import numpy as np
 from typing import Dict, Any
+import lightgbm as lgb
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import LabelEncoder
 
 load_dotenv()
 
@@ -33,27 +37,72 @@ class HouseInput(BaseModel):
 # ML Model for House Prediction
 class HousePredictor:
     def __init__(self):
-        self.base_price = 200000
+        # Load and preprocess the data
+        self.model = self._train_model()
 
-    def _calculate_base_adjustments(self, features: Dict[str, Any]) -> float:
-        adjustments = 0
-        if 'square_footage' in features:
-            adjustments += features['square_footage'] * 100
-        if 'bedrooms' in features:
-            adjustments += features['bedrooms'] * 15000
-        if 'bathrooms' in features:
-            adjustments += features['bathrooms'] * 10000
-        if 'age' in features:
-            adjustments -= features['age'] * 1000
-        return adjustments
+    def _train_model(self):
+        # Load your dataset
+        realtor_data = pd.read_csv('path_to_your_dataset.csv')  # Update with the actual path
 
-    def _calculate_location_multiplier(self, features: Dict[str, Any]) -> float:
-        return 1.0
+        X = realtor_data.drop('price', axis=1)
+        y = realtor_data['price']
+
+        # Handle the datetime column 'prev_sold_date'
+        X['prev_sold_year'] = X['prev_sold_date'].dt.year
+        X['prev_sold_month'] = X['prev_sold_date'].dt.month
+        X['prev_sold_day'] = X['prev_sold_date'].dt.day
+        X = X.drop(columns=['prev_sold_date'])
+
+        # Handle categorical features (use LabelEncoder)
+        categorical_cols = X.select_dtypes(include=['object']).columns
+        encoder = LabelEncoder()
+        for col in categorical_cols:
+            X[col] = encoder.fit_transform(X[col])
+
+        # Split the data into train and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Define the LightGBM dataset
+        train_data = lgb.Dataset(X_train, label=y_train)
+        test_data = lgb.Dataset(X_test, label=y_test, reference=train_data)
+
+        # Set the parameters for LightGBM
+        params = {
+            'objective': 'regression',
+            'metric': 'rmse',
+            'boosting_type': 'gbdt',
+            'num_leaves': 100,
+            'max_depth': 20,
+            'learning_rate': 0.1,
+            'lambda_l1': 1.0,
+            'lambda_l2': 1.0,
+            'feature_fraction': 1.0,
+            'bagging_fraction': 0.8,
+        }
+
+        # Train the model
+        model = lgb.train(params, train_data, valid_sets=[test_data], num_boost_round=1000)
+
+        return model
 
     def predict(self, features: Dict[str, Any]) -> Dict[str, Any]:
-        base_adjustments = self._calculate_base_adjustments(features)
-        location_multiplier = self._calculate_location_multiplier(features)
-        predicted_price = (self.base_price + base_adjustments) * location_multiplier
+        # Prepare the input data for prediction
+        input_data = pd.DataFrame([features])
+
+        # Handle the datetime column 'prev_sold_date'
+        input_data['prev_sold_year'] = input_data['prev_sold_date'].dt.year
+        input_data['prev_sold_month'] = input_data['prev_sold_date'].dt.month
+        input_data['prev_sold_day'] = input_data['prev_sold_date'].dt.day
+        input_data = input_data.drop(columns=['prev_sold_date'])
+
+        # Handle categorical features (use LabelEncoder)
+        categorical_cols = input_data.select_dtypes(include=['object']).columns
+        encoder = LabelEncoder()
+        for col in categorical_cols:
+            input_data[col] = encoder.fit_transform(input_data[col])
+
+        # Make predictions
+        predicted_price = self.model.predict(input_data)[0]
 
         is_undervalued = True
         if 'price' in features and features['price'] is not None:
